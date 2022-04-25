@@ -202,12 +202,13 @@ class RolloutStateSpaceExperiment(Experiment):
                     x_current[i, :] = controller_under_test.dynamics_model.closed_loop_dynamics(
                         x_current[i, :].unsqueeze(0),
                         u_current[i, :].unsqueeze(0)).squeeze()
-                    if tstep == num_timesteps:
-                        controller_under_test.dynamics_model.plant.SetPositions(controller_under_test.dynamics_model.plant_context, [0, x_current[i, :2]])
-                        controller_under_test.dynamics_model.plant.SetVelocities(controller_under_test.dynamics_model.plant_context, [0, x_current[i, 2:4]])
-                        controller_under_test.dynamics_model.diagram.Publish(controller_under_test.dynamics_model.context)
-                if tstep == num_timesteps:
-                   controller_under_test.dynamics_model.viz.publish_recording() 
+                    if i == 0:
+                        try:
+                            controller_under_test.dynamics_model.plant.SetPositions(controller_under_test.dynamics_model.plant_context, x_current[i, :2])
+                            controller_under_test.dynamics_model.plant.SetVelocities(controller_under_test.dynamics_model.plant_context, x_current[i, 2:4])
+                            controller_under_test.dynamics_model.diagram.Publish(controller_under_test.dynamics_model.context)
+                        except:
+                            pass
             else:
                 # Simulate forward using the dynamics
                 for i in range(n_sims):
@@ -217,7 +218,11 @@ class RolloutStateSpaceExperiment(Experiment):
                         random_scenarios[i],
                     )
                     x_current[i, :] = x_current[i, :] + delta_t * xdot.squeeze()
-
+        
+        if isinstance(controller_under_test.dynamics_model,TwoLinkArm2D):
+            controller_under_test.dynamics_model.viz.stop_recording()
+            controller_under_test.dynamics_model.viz.publish_recording() 
+            controller_under_test.dynamics_model.viz.reset_recording()
         return results_df
 
     def plot(
@@ -286,6 +291,11 @@ class RolloutStateSpaceExperiment(Experiment):
             rollout_ax.set_xlabel(self.plot_x_label)
             rollout_ax.set_ylabel(self.plot_y_label)
 
+        goal_state = controller_under_test.dynamics_model.goal_point.numpy()
+        rollout_ax.plot(goal_state[0], goal_state[1], 'r.')
+        if isinstance(controller_under_test.dynamics_model, TwoLinkArm2D):
+            for collision_state in controller_under_test.dynamics_model.collision_state:
+                rollout_ax.plot(collision_state[0], collision_state[1], 'kx')
         # Remove the legend -- too much clutter
         rollout_ax.legend([], [], frameon=False)
 

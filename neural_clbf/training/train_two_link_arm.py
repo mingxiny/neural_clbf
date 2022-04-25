@@ -25,12 +25,6 @@ torch.multiprocessing.set_sharing_strategy("file_system")
 batch_size = 64
 controller_period = 0.01
 
-start_x = torch.tensor(
-    [
-        [0, 0, 0, 0, 0.065, 0.275, 0.075],
-        [0, np.pi/2, 0, 0, 0.06964194, 0.18307933, 0],
-    ]
-)
 simulation_dt = 0.01
 
 
@@ -56,13 +50,13 @@ def main(args):
     data_module = EpisodicDataModule(
         dynamics_model,
         initial_conditions,
-        trajectories_per_episode=2,
+        trajectories_per_episode=50,
         trajectory_length=150,
-        fixed_samples=5000,
+        fixed_samples=10000,
         max_points=20000,
         val_split=0.1,
         batch_size=64,
-        # quotas={"safe": 0.4, "unsafe": 0.4, "goal": 0.2},
+        quotas={"safe": 0.3, "goal": 0.4, "unsafe": 0.3},
     )
     
     default_state = torch.tensor(np.concatenate((dynamics_model.goal_state, dynamics_model.get_observation_with_state(dynamics_model.goal_state))), requires_grad=True)
@@ -79,6 +73,15 @@ def main(args):
         default_state=default_state,
         plot_unsafe_region=False,
     )
+
+    start_x = torch.tensor(
+    [
+        [0, 0, 0, 0, 0.065, 0.275, 0.075],
+        [-np.pi/2, 0, 0, 0, 0, 0, 0],
+    ])
+    for i in range(start_x.shape[0]):
+        start_x[i, dynamics_model.n_dims:] = torch.tensor(dynamics_model.get_observation_with_state(start_x[i, :dynamics_model.n_dims]))
+
     rollout_experiment = RolloutStateSpaceExperiment(
         "Rollout",
         start_x,
@@ -88,7 +91,7 @@ def main(args):
         "$\\theta_2$",
         scenarios=scenarios,
         n_sims_per_start=1,
-        t_sim=5.0,
+        t_sim=2,
     )
     experiment_suite = ExperimentSuite([V_contour_experiment, rollout_experiment])
 
@@ -106,7 +109,7 @@ def main(args):
 
     # Initialize the logger and trainer
     tb_logger = pl_loggers.TensorBoardLogger(
-        "logs/inverted_pendulum",
+        "logs/two_link_arm",
         name=f"commit_{current_git_hash()}",
     )
     trainer = pl.Trainer.from_argparse_args(

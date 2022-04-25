@@ -241,6 +241,12 @@ class CLFContourExperiment(Experiment):
                     colors=["blue"],
                     levels=[0.0],
                 )
+        goal_state = controller_under_test.dynamics_model.goal_point.numpy()
+        ax.plot(goal_state[0], goal_state[1], "r.")
+
+        if isinstance(controller_under_test.dynamics_model, TwoLinkArm2D):
+            for collision_state in controller_under_test.dynamics_model.collision_state:
+                ax.plot(collision_state[0], collision_state[1], 'kx')
 
         # Make the legend
         ax.legend(

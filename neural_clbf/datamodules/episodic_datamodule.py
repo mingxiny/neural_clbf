@@ -126,9 +126,9 @@ class EpisodicDataModule(pl.LightningDataModule):
                 samples.append(self.model.sample_boundary(num_samples))
 
         # Sample all remaining points uniformly at random
-        free_samples = self.fixed_samples - allocated_samples
-        assert free_samples >= 0
-        samples.append(self.model.sample_state_space(free_samples))
+        # free_samples = self.fixed_samples - allocated_samples
+        # assert free_samples >= 0
+        # samples.append(self.model.sample_state_space(free_samples))
 
         return torch.vstack(samples)
 

@@ -462,7 +462,7 @@ class NeuralObsCBFController(pl.LightningModule, CBFController):
         )
 
     def configure_optimizers(self):
-        clbf_params = list(self.V_nn.parameters())
+        clbf_params = list(self.h_nn.parameters())
 
         clbf_opt = torch.optim.SGD(
             clbf_params,

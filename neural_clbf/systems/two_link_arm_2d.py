@@ -133,6 +133,12 @@ class TwoLinkArm2D(ControlAffineSystem):
         self.goal_state = np.concatenate((goal_pos, np.zeros(2)))
         self.desired_state_port = controller.get_input_port_desired_state().FixValue(self.controller_context, self.goal_state)
 
+        self.collision_state = []
+        for obstacle_name in self.collision_group["obstacle"]:
+            body = plant.GetBodyByName(obstacle_name)
+            obstacle_pose = self.plant.EvalBodyPoseInWorld(self.plant_context, body)
+            self.collision_state.append(self.inverse_kinematics(obstacle_pose.translation()))
+
         # self.compute_linearized_controller(None)
 
     @property
@@ -198,6 +204,14 @@ class TwoLinkArm2D(ControlAffineSystem):
             output = self.controller.AllocateOutput()
             self.controller.CalcOutput(self.controller_context, output)
             u_nominal[i] = torch.tensor(output.get_vector_data(0).value()).type_as(x)
+        
+        upper_u_lim, lower_u_lim = self.control_limits
+        for dim_idx in range(self.n_controls):
+            u_nominal[:, dim_idx] = torch.clamp(
+                u_nominal[:, dim_idx],
+                min=lower_u_lim[dim_idx].item(),
+                max=upper_u_lim[dim_idx].item(),
+            )
 
         return u_nominal
 
@@ -296,12 +310,12 @@ class TwoLinkArm2D(ControlAffineSystem):
         # Check if robot links are in collision with any obstacles
         for i in range(x.shape[0]):
             self.plant.SetPositions(self.plant_context, x[i, :self.q_dims])
-            unsafe_mask[i].logical_and_(torch.tensor(self.check_collision_hard()))
+            unsafe_mask[i].logical_or_(torch.tensor(self.check_collision_hard()))
 
         # Also constrain to be within the state limit
         x_max, x_min = self.state_limits
         limit_mask = (torch.all(x[:, :self.n_dims] >= x_max, dim=1)).logical_or_(torch.all(x[:, :self.n_dims] <= x_min, dim=1))
-        unsafe_mask.logical_and_(limit_mask)
+        unsafe_mask.logical_or_(limit_mask)
 
         return unsafe_mask
 
@@ -322,7 +336,7 @@ class TwoLinkArm2D(ControlAffineSystem):
         #     pos = self.plant.EvalBodyPoseInWorld(self.plant_context, self.ee_body).translation()[:2]  # Drake returns pos in 3D, project into 2D for our system
         #     near_goal_xy[i] = torch.tensor(np.abs(pos - self.ee_goal_pos) <= 0.1, dtype=torch.bool)
         
-        near_goal_xy = (x[:, :2] - torch.tensor(self.goal_state[:2]).type_as(x)).norm() <= 0.1
+        near_goal_xy = (x[:, :2] - torch.tensor(self.goal_state[:2]).type_as(x)).norm(dim=1) <= 0.2
         goal_mask.logical_and_(near_goal_xy)
         near_goal_theta_velocity_1 = x[:, 2].abs() <= 0.1
         near_goal_theta_velocity_2 = x[:, 3].abs() <= 0.1
@@ -333,6 +347,44 @@ class TwoLinkArm2D(ControlAffineSystem):
         goal_mask.logical_and_(self.safe_mask(x))
 
         return goal_mask
+    
+    def sample_goal(self, num_samples: int, eps=0.1) -> torch.Tensor:
+        """Sample uniformly from the goal. May return some points that are not in the
+        goal, so watch out (only a best-effort sampling)."""
+
+        x = torch.Tensor(num_samples, self.n_dims + self.o_dims + self.q_dims).uniform_(-1.0, 1.0)
+        for i in range(num_samples):
+            x[i, :self.n_dims] = x[i, :self.n_dims] * eps + self.goal_state
+            self.plant.SetPositions(self.plant_context, x[i, :self.q_dims])
+            self.plant.SetVelocities(self.plant_context, x[i, self.q_dims:self.n_dims])
+            o = self.get_observation()
+            x[i, self.n_dims:] = torch.tensor(o).type_as(x)
+
+        return x
+
+    def sample_safe(self, num_samples: int, max_tries: int = 5000) -> torch.Tensor:
+        """Sample uniformly from the goal. May return some points that are not in the
+        goal, so watch out (only a best-effort sampling)."""
+        x = ControlAffineSystem.sample_safe(self, num_samples, max_tries)
+
+        return self.complete_sample_with_observations(x, num_samples)
+
+    def sample_unsafe(self, num_samples: int, max_tries: int = 5000) -> torch.Tensor:
+        """Sample uniformly from the goal. May return some points that are not in the
+        goal, so watch out (only a best-effort sampling)."""
+        x = ControlAffineSystem.sample_unsafe(self, num_samples, max_tries)
+
+        return self.complete_sample_with_observations(x, num_samples)
+
+    def complete_sample_with_observations(self, x, num_samples: int) -> torch.Tensor:
+        samples = torch.zeros(num_samples, self.n_dims + self.o_dims + self.q_dims).type_as(x)
+        samples[:, :self.n_dims] = x
+        for i in range(num_samples):
+            self.plant.SetPositions(self.plant_context, x[i, :self.q_dims])
+            self.plant.SetVelocities(self.plant_context, x[i, self.q_dims:self.n_dims])
+            o = self.get_observation()
+            samples[i, self.n_dims:] = torch.tensor(o).type_as(x)
+        return samples
 
     def _f(self, x: torch.Tensor, params: Scenario):
         """
@@ -400,12 +452,12 @@ class TwoLinkArm2D(ControlAffineSystem):
             M = self.plant.CalcMassMatrix(self.plant_context)
             C = self.plant.CalcBiasTerm(self.plant_context)
             tau = self.plant.CalcGravityGeneralizedForces(self.plant_context) 
-            f = torch.zeros(self.n_dims)
-            f[:self.q_dims] = q_dot
-            f[self.q_dims:self.n_dims] = torch.tensor(np.linalg.inv(M) @ (tau - C@q_dot.numpy())).type_as(x)
-            g = torch.zeros((self.n_dims, self.n_controls))
-            g[self.q_dims:, :] = torch.tensor(np.linalg.inv(M)).type_as(x)
-            x_next[i, :self.n_dims] = f + g @ u[i]
+            xdot = torch.zeros(self.n_dims)
+            xdot[:self.q_dims] = q_dot
+            xdot[self.q_dims:self.n_dims] = torch.tensor(np.linalg.inv(M) @ (tau + u[i].numpy() - C@q_dot.numpy())).type_as(x)
+            x_next[i, :self.n_dims] = xdot * self.dt + x[i, :self.n_dims]
+            self.plant.SetPositions(self.plant_context, x_next[i, :self.q_dims])
+            self.plant.SetVelocities(self.plant_context, x_next[i, self.q_dims:self.n_dims])
             o = self.get_observation()
             x_next[i, self.n_dims:] = torch.tensor(o).type_as(x_next)
 
@@ -431,17 +483,6 @@ class TwoLinkArm2D(ControlAffineSystem):
         self.plant.SetPositions(self.plant_context, state[:self.q_dims])
         self.plant.SetVelocities(self.plant_context, state[self.q_dims:self.n_dims])
         return self.get_observation()
-
-    def sample_state_space(self, num_samples: int) -> torch.Tensor:
-        x = ControlAffineSystem.sample_state_space(self, num_samples)
-        state = torch.zeros((num_samples, self.n_dims + self.o_dims + self.q_dims)).type_as(x)
-        state[:, :self.n_dims] = x
-
-        for i in range(num_samples):
-            self.plant.SetPositions(self.plant_context, x[i, :2])
-            self.plant.SetVelocities(self.plant_context, x[i, 2:4])
-            state[i, self.n_dims:] = torch.tensor(self.get_observation()).type_as(x)
-        return state
 
     def calc_do_dq(self, sd):
         frame_A_id = self.inspector.GetFrameId(sd.id_A)
