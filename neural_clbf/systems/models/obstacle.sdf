@@ -1,0 +1,91 @@
+<?xml version="1.0"?>
+<!--
+SDF automatically generated with: gz sdf -p /my_urdf.urdf > /my_sdf.sdf
+
+Later edited by hand to:
+* rename the base link
+* remove damping from the joints
+* use pose frame semantics to reflect URDF pose values.
+-->
+<sdf xmlns:drake="http://drake.mit.edu" version="1.7">
+  <model name="obstacle">
+    <link name="box_0">
+      <pose> -0.12 0.07 0 0 0 0 </pose>
+      <inertial>
+        <pose>-0.1 0 0.07 0 0 0</pose>
+        <mass>5</mass>
+        <inertia>
+          <ixx>0.05</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>0.06</iyy>
+          <iyz>0</iyz>
+          <izz>0.03</izz>
+        </inertia>
+      </inertial>
+      <visual name="box_0">
+        <geometry>
+          <box>
+            <size> 0.05 0.05 0.05</size>
+          </box>
+        </geometry>
+        <material>
+          <diffuse>0.5 0.2 0.4 1.0</diffuse>
+        </material>
+      </visual>
+      <collision name="box_0">
+        <geometry>
+          <box>
+            <size> 0.05 0.05 0.05</size>
+          </box>
+        </geometry>
+      </collision>
+      <gravity>1</gravity>
+      <velocity_decay/>
+      <self_collide>0</self_collide>
+    </link>
+    <joint name="box0_weld" type="fixed">
+      <child>box_0</child>
+      <parent>world</parent>
+    </joint>
+    <link name="box_1">
+      <pose> 0.1 0.25 0 0 0 0 </pose>
+      <inertial>
+        <pose>-0.1 0 0.07 0 0 0</pose>
+        <mass>5</mass>
+        <inertia>
+          <ixx>0.05</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>0.06</iyy>
+          <iyz>0</iyz>
+          <izz>0.03</izz>
+        </inertia>
+      </inertial>
+      <visual name="box_1">
+        <geometry>
+          <box>
+            <size> 0.05 0.05 0.05</size>
+          </box>
+        </geometry>
+        <material>
+          <diffuse>0.5 0.2 0.4 1.0</diffuse>
+        </material>
+      </visual>
+      <collision name="box_1">
+        <geometry>
+          <box>
+            <size> 0.05 0.05 0.05</size>
+          </box>
+        </geometry>
+      </collision>
+      <gravity>1</gravity>
+      <velocity_decay/>
+      <self_collide>0</self_collide>
+    </link>
+    <joint name="box1_weld" type="fixed">
+      <child>box_1</child>
+      <parent>world</parent>
+    </joint>
+  </model>
+</sdf>

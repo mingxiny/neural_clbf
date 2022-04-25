@@ -12,6 +12,7 @@ import tqdm
 
 from neural_clbf.experiments import Experiment
 from neural_clbf.systems.utils import ScenarioList
+from neural_clbf.systems import TwoLinkArm2D
 
 if TYPE_CHECKING:
     from neural_clbf.controllers import Controller, NeuralObsBFController  # noqa
@@ -97,7 +98,10 @@ class RolloutStateSpaceExperiment(Experiment):
             parameter_ranges[param_name] = (param_min, param_max)
 
         # Generate a tensor of start states
-        n_dims = controller_under_test.dynamics_model.n_dims
+        if isinstance(controller_under_test.dynamics_model,TwoLinkArm2D):
+            n_dims = controller_under_test.dynamics_model.n_dims + controller_under_test.dynamics_model.o_dims + controller_under_test.dynamics_model.q_dims
+        else:
+            n_dims = controller_under_test.dynamics_model.n_dims
         n_controls = controller_under_test.dynamics_model.n_controls
         x_sim_start = torch.zeros(n_sims, n_dims).type_as(self.start_x)
         for i in range(0, self.start_x.shape[0]):
@@ -191,15 +195,28 @@ class RolloutStateSpaceExperiment(Experiment):
                     log_packet["V"] = V[sim_index].cpu().numpy().item()
 
                 results_df = results_df.append(log_packet, ignore_index=True)
-
-            # Simulate forward using the dynamics
-            for i in range(n_sims):
-                xdot = controller_under_test.dynamics_model.closed_loop_dynamics(
-                    x_current[i, :].unsqueeze(0),
-                    u_current[i, :].unsqueeze(0),
-                    random_scenarios[i],
-                )
-                x_current[i, :] = x_current[i, :] + delta_t * xdot.squeeze()
+            
+            if isinstance(controller_under_test.dynamics_model,TwoLinkArm2D):
+                controller_under_test.dynamics_model.viz.start_recording()
+                for i in range(n_sims):
+                    x_current[i, :] = controller_under_test.dynamics_model.closed_loop_dynamics(
+                        x_current[i, :].unsqueeze(0),
+                        u_current[i, :].unsqueeze(0)).squeeze()
+                    if tstep == num_timesteps:
+                        controller_under_test.dynamics_model.plant.SetPositions(controller_under_test.dynamics_model.plant_context, [0, x_current[i, :2]])
+                        controller_under_test.dynamics_model.plant.SetVelocities(controller_under_test.dynamics_model.plant_context, [0, x_current[i, 2:4]])
+                        controller_under_test.dynamics_model.diagram.Publish(controller_under_test.dynamics_model.context)
+                if tstep == num_timesteps:
+                   controller_under_test.dynamics_model.viz.publish_recording() 
+            else:
+                # Simulate forward using the dynamics
+                for i in range(n_sims):
+                    xdot = controller_under_test.dynamics_model.closed_loop_dynamics(
+                        x_current[i, :].unsqueeze(0),
+                        u_current[i, :].unsqueeze(0),
+                        random_scenarios[i],
+                    )
+                    x_current[i, :] = x_current[i, :] + delta_t * xdot.squeeze()
 
         return results_df
 
@@ -342,6 +359,7 @@ class RolloutStateSpaceExperiment(Experiment):
         fig_handle = ("Rollout (state space)", fig)
 
         if display_plots:
+            plt.savefig("state_rollout.png")
             plt.show()
             return []
         else:

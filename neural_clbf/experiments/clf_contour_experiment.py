@@ -9,6 +9,7 @@ import torch
 import tqdm
 
 from neural_clbf.experiments import Experiment
+from neural_clbf.systems import TwoLinkArm2D
 
 if TYPE_CHECKING:
     from neural_clbf.controllers import Controller, CLFController  # noqa
@@ -109,11 +110,18 @@ class CLFContourExperiment(Experiment):
         default_state = default_state.type_as(x_vals)
 
         # Make a copy of the default state, which we'll modify on every loop
-        x = (
-            default_state.clone()
-            .detach()
-            .reshape(1, controller_under_test.dynamics_model.n_dims)
-        )
+        if isinstance(controller_under_test.dynamics_model, TwoLinkArm2D):
+            x = (
+                default_state.clone()
+                .detach()
+                .reshape(1, controller_under_test.dynamics_model.n_dims + controller_under_test.dynamics_model.o_dims + controller_under_test.dynamics_model.q_dims)
+            )
+        else:
+            x = (
+                default_state.clone()
+                .detach()
+                .reshape(1, controller_under_test.dynamics_model.n_dims)
+            )
 
         # Loop through the grid
         prog_bar_range = tqdm.trange(self.n_grid, desc="Plotting CLF", leave=True)
@@ -248,6 +256,7 @@ class CLFContourExperiment(Experiment):
         fig_handle = ("V Contour", fig)
 
         if display_plots:
+            plt.savefig("CLF.png")
             plt.show()
             return []
         else:

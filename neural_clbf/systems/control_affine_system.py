@@ -376,7 +376,7 @@ class ControlAffineSystem(ABC):
         """
         # Sanity check on input
         assert x.ndim == 2
-        assert x.shape[1] == self.n_dims
+        # assert x.shape[1] == self.n_dims
 
         # If no params required, use nominal params
         if params is None:

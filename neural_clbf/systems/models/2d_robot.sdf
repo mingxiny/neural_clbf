@@ -1,0 +1,213 @@
+<?xml version="1.0"?>
+<!--
+SDF automatically generated with: gz sdf -p /my_urdf.urdf > /my_sdf.sdf
+
+Later edited by hand to:
+* rename the base link
+* remove damping from the joints
+* use pose frame semantics to reflect URDF pose values.
+-->
+<sdf xmlns:drake="http://drake.mit.edu" version="1.7">
+  <model name="2d_robot">
+    <link name="link_0">
+      <inertial>
+        <pose>-0.1 0 0.07 0 0 0</pose>
+        <mass>5</mass>
+        <inertia>
+          <ixx>0.05</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>0.06</iyy>
+          <iyz>0</iyz>
+          <izz>0.03</izz>
+        </inertia>
+      </inertial>
+      <visual name="link_0">
+        <geometry>
+          <box>
+            <size> 0.05 0.001 0.05</size>
+          </box>
+        </geometry>
+        <material>
+          <diffuse>0.5 0.2 0.4 1.0</diffuse>
+        </material>
+      </visual>
+      <collision name="link_0">
+        <geometry>
+          <box>
+            <size> 0.05 0.001 0.05</size>
+          </box>
+        </geometry>
+      </collision>
+      <gravity>1</gravity>
+      <velocity_decay/>
+      <self_collide>0</self_collide>
+    </link>
+    <joint name="base_weld" type="fixed">
+      <child>link_0</child>
+      <parent>world</parent>
+    </joint>
+    <link name="link_1">
+      <pose relative_to="joint_1">0 0.1 0 0 0 0</pose>
+      <inertial>
+        <pose>0 -0.03 0.12 0 0 0</pose>
+        <mass>5.76</mass>
+        <inertia>
+          <ixx>0.033</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>0.0333</iyy>
+          <iyz>0</iyz>
+          <izz>0.0123</izz>
+        </inertia>
+      </inertial>
+      <visual name="link_1">
+        <geometry>
+          <box>
+            <size> 0.02 0.2 0.02 </size>
+          </box>
+        </geometry>
+        <material>
+          <diffuse>0.4 0.6 0.3 1.0</diffuse>
+        </material>
+      </visual>
+      <collision name="link_1">
+        <geometry>
+          <box>
+            <size> 0.02 0.2 0.02 </size>
+          </box>
+        </geometry>
+      </collision>
+      <gravity>1</gravity>
+      <velocity_decay/>
+      <self_collide>0</self_collide>
+    </link>
+    <joint name="joint_1" type="revolute">
+      <pose relative_to="link_0">0. 0.0 0 0 0 0</pose>
+      <child>link_1</child>
+      <parent>link_0</parent>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <lower>-2.96705972839</lower>
+          <upper>2.96705972839</upper>
+          <effort>320</effort>
+          <velocity>1.4835298641951802</velocity>
+          <drake:acceleration>8.57</drake:acceleration>
+        </limit>
+        <dynamics>
+          <damping>0.0</damping>
+          <friction>0</friction>
+          <spring_reference>0</spring_reference>
+          <spring_stiffness>0</spring_stiffness>
+        </dynamics>
+      </axis>
+    </joint>
+    <link name="link_2">
+      <pose relative_to="joint_2">0 0.1 0 0 0 0</pose>
+      <inertial>
+        <pose>0 -0.03 0.12 0 0 0</pose>
+        <mass>5.76</mass>
+        <inertia>
+          <ixx>0.033</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>0.0333</iyy>
+          <iyz>0</iyz>
+          <izz>0.0123</izz>
+        </inertia>
+      </inertial>
+      <visual name="link_2">
+        <geometry>
+          <box>
+            <size> 0.02 0.2 0.02 </size>
+          </box>
+        </geometry>
+        <material>
+          <diffuse>0.1 0.4 0.8 1.0</diffuse>
+        </material>
+      </visual>
+      <collision name="link_2">
+        <geometry>
+          <box>
+            <size> 0.02 0.2 0.02 </size>
+          </box>
+        </geometry>
+      </collision>
+      <gravity>1</gravity>
+      <velocity_decay/>
+      <self_collide>0</self_collide>
+    </link>
+    <joint name="joint_2" type="revolute">
+      <pose relative_to="link_1">0. 0.1 0 0 0 0</pose>
+      <child>link_2</child>
+      <parent>link_1</parent>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <lower>-2.96705972839</lower>
+          <upper>2.96705972839</upper>
+          <effort>320</effort>
+          <velocity>1.4835298641951802</velocity>
+          <drake:acceleration>8.57</drake:acceleration>
+        </limit>
+        <dynamics>
+          <damping>0.0</damping>
+          <friction>0</friction>
+          <spring_reference>0</spring_reference>
+          <spring_stiffness>0</spring_stiffness>
+        </dynamics>
+      </axis>
+    </joint>
+    <link name="ee">
+      <pose relative_to="joint_3">0 0 0 0 0 0</pose>
+      <inertial>
+        <pose>0 -0.03 0.12 0 0 0</pose>
+        <mass>0</mass>
+        <inertia>
+          <ixx>0</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>0</iyy>
+          <iyz>0</iyz>
+          <izz>0</izz>
+        </inertia>
+      </inertial>
+      <visual name="ee">
+        <geometry>
+          <sphere>
+            <radius> 0.01 </radius>
+          </sphere>
+        </geometry>
+        <material>
+          <diffuse>0.6 0.6 0 1.0</diffuse>
+        </material>
+      </visual>
+      <collision name="ee">
+        <geometry>
+          <sphere>
+            <radius> 0.01 </radius>
+          </sphere>
+        </geometry>
+      </collision>
+      <gravity>1</gravity>
+      <velocity_decay/>
+      <self_collide>0</self_collide>
+    </link>
+    <joint name="joint_3" type="fixed">
+      <pose relative_to="link_2">0. 0.1 0 0 0 0</pose>
+      <child>ee</child>
+      <parent>link_2</parent>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>0</effort>
+        </limit>
+      </axis>
+    </joint>
+    <static>0</static>
+    <plugin name="gazebo_ros_controller" filename="libgazebo_ros_control.so">
+      <robotNamespace>/iiwa</robotNamespace>
+    </plugin>
+  </model>
+</sdf>

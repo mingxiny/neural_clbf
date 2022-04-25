@@ -12,6 +12,7 @@ from torch.utils.data import TensorDataset, DataLoader
 
 
 from neural_clbf.systems import ControlAffineSystem
+from neural_clbf.systems.two_link_arm_2d import TwoLinkArm2D
 
 
 class EpisodicDataModule(pl.LightningDataModule):
@@ -95,7 +96,10 @@ class EpisodicDataModule(pl.LightningDataModule):
         x_sim = simulator(x_init, self.trajectory_length)
 
         # Reshape the data into a single replay buffer
-        x_sim = x_sim.view(-1, self.n_dims)
+        if isinstance(self.model, TwoLinkArm2D):
+            x_sim = x_sim.view(-1, self.n_dims+self.model.o_dims+self.model.q_dims)
+        else:
+            x_sim = x_sim.view(-1, self.n_dims)
 
         # Return the sampled data
         return x_sim
